@@ -28,7 +28,7 @@ export async function saveCheck(day:string,headache:HeadacheChoice,food:FoodChoi
   const [data,slots]=await Promise.all([readData(),readFoodForChecks()])
   const errors=validateCheck({day,headache,food},data.pains,slots)
   if(errors.length)throw new Error(errors.join(' '))
-  const record:DayCheckRecord={version:1,day,headache,food,foodSignature:foodSnapshot(day,slots).signature,zone:Intl.DateTimeFormat().resolvedOptions().timeZone,updatedAt:new Date().toISOString(),revision:crypto.randomUUID()}
+  const record:DayCheckRecord={version:2,day,headache,food,foodSignature:foodSnapshot(day,slots).signature,zone:Intl.DateTimeFormat().resolvedOptions().timeZone,updatedAt:new Date().toISOString(),revision:crypto.randomUUID()}
   const db=await openChecks()
   await new Promise<void>((resolve,reject)=>{
     let conflict=false;const tx=db.transaction('days','readwrite');const store=tx.objectStore('days');const r=store.get(day)
