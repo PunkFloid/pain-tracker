@@ -1,46 +1,39 @@
-# Pain Tracker 0.1
+# Pain Tracker
 
-Osobní deník bolestí hlavy a užití léků. React + TypeScript + Vite.
+Český lokální deník bolestí, léků a jídel. React + TypeScript + Vite.
 
-## Spuštění
+## Vývoj
 
 ```sh
 npm install
 npm run dev
 ```
 
-Port je definován v existujícím vite.config.ts (5180).
-
-## Kontrola
+Port 5180. Test na domácí Wi-Fi: `npm run dev -- --host 0.0.0.0`.
 
 ```sh
 npm run build
 npm run lint
+node --test tests/food-parser.test.mjs
 ```
+
+Před spuštěním a sestavením skript stáhne přes HTTPS připnutou verzi PDF.js 5.4.394 a licenci do ignorované složky public/pdfjs. Veřejný web pak knihovnu i worker poskytuje ze stejné adresy jako aplikaci. Prohlížeč neposílá importované PDF na server. První spuštění/sestavení vyžaduje internet a dostupnost CDN jsDelivr.
 
 ## Funkce
 
-- Začátek a konec bolesti nyní nebo zpětně, souhrnná intenzita 0–10, poznámka.
-- Léky: název, volitelná síla z obalu, počet kusů, čas, vazba na bolest.
-- Historie, úpravy, mazání s potvrzením. Smazání bolesti ponechá její léky jako samostatné záznamy.
-- IndexedDB a export úplné JSON zálohy.
-- Časové překryvy epizod a budoucí časy jsou odmítnuty.
+- Bolesti: začátek, konec, souhrnná intenzita a poznámka; léky, historie a úpravy.
+- PDF export Kalorických tabulek: výběr souboru, náhled, jídla a rozepsané suroviny, datum a rozmezí kategorie.
+- Překryvy importů se řeší po kategorii v rámci dne. Shodné seznamy se přeskočí. Změněné se zachovají, dokud uživatel nepotvrdí nahrazení celé kategorie. Pořadí položek není důležité, opakované stejné položky se zachovávají.
+- Nerozpoznané řádky nebo nesouhlasící součty energie blokují uložení pro kontrolu.
+- Originální PDF se uloží lokálně spolu s potvrzeným importem. Lze jej znovu stáhnout.
+- Rozpoznání vajec a mléčných složek je pouze slovník výslovných názvů, nikoli kompletní analýza receptur ani odhad množství alergenů.
 
-## Zatím není implementováno
+## Omezení a soukromí
 
-Import PDF, evidence jídel, analýza, obnovení zálohy, průběžná křivka intenzity, instalovatelná/offline PWA, synchronizace, šifrování databáze a doporučení dávkování.
+IndexedDB: bolesti v pain-tracker, jídelníček v pain-tracker-food. Změna adresy/portu používá jiné úložiště. Bez synchronizace, serverového účtu či šifrování databáze. Používat v jedné kartě. Zálohy i PDF obsahují citlivá data a nesmějí do veřejného repozitáře.
 
-## Soukromí
+JSON export bolestí/léků a jídel je zatím oddělený; jídelní JSON neobsahuje původní PDF. Obnovení není implementované. Původní soubory stáhněte zvlášť.
 
-Data jsou v prohlížeči, neposílají se na server. Změna domény nebo portu používá jiné úložiště. Vymazání dat webu může záznamy odstranit. Používejte jen jednu kartu aplikace; souběžné úpravy ve více kartách nejsou podporované. JSON zálohy obsahují citlivé údaje a nepatří do GitHubu. Polovina kusu je pouze evidenční údaj, nikoli pokyn k dělení přípravku.
+Zatím není analýza vztahu jídel k bolesti, ruční oprava surovin, OCR, potvrzování úplnosti dnů, nastavení intervalů ani plná offline PWA. Ikona na ploše sama o sobě neznamená offline podporu. Časy jídel jsou pouze intervalové odhady.
 
-## Ruční test
-
-1. Založte testovací bolest a přidejte testovací užití léku.
-2. Obnovte stránku a ověřte zachování záznamů.
-3. Ukončete bolest a upravte poznámku v historii.
-4. Ověřte odmítnutí konce před začátkem.
-5. Exportujte JSON a ověřte obsah pains a medications.
-6. Smažte testovací záznamy.
-
-Zdrojový kód před nahráním nebyl spuštěn v Node ani ověřen na iPhonu. Build, lint a funkční kontrolu proveďte lokálně.
+Při vývoji byl parser ověřen na textu vzorového PDF a anonymních syntetických testech. Celý PDF.js import, TypeScript sestavení a Safari je nutné ověřit v CI a na zařízení. Testovací PDF ani jeho text nejsou v repozitáři.
