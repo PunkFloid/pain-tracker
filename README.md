@@ -1,32 +1,46 @@
-# React + TypeScript + Vite
+# Pain Tracker 0.1
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Osobní deník bolestí hlavy a užití léků. React + TypeScript + Vite.
 
-Currently, two official plugins are available:
+## Spuštění
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```sh
+npm install
+npm run dev
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+Port je definován v existujícím vite.config.ts (5180).
+
+## Kontrola
+
+```sh
+npm run build
+npm run lint
+```
+
+## Funkce
+
+- Začátek a konec bolesti nyní nebo zpětně, souhrnná intenzita 0–10, poznámka.
+- Léky: název, volitelná síla z obalu, počet kusů, čas, vazba na bolest.
+- Historie, úpravy, mazání s potvrzením. Smazání bolesti ponechá její léky jako samostatné záznamy.
+- IndexedDB a export úplné JSON zálohy.
+- Časové překryvy epizod a budoucí časy jsou odmítnuty.
+
+## Zatím není implementováno
+
+Import PDF, evidence jídel, analýza, obnovení zálohy, průběžná křivka intenzity, instalovatelná/offline PWA, synchronizace, šifrování databáze a doporučení dávkování.
+
+## Soukromí
+
+Data jsou v prohlížeči, neposílají se na server. Změna domény nebo portu používá jiné úložiště. Vymazání dat webu může záznamy odstranit. Používejte jen jednu kartu aplikace; souběžné úpravy ve více kartách nejsou podporované. JSON zálohy obsahují citlivé údaje a nepatří do GitHubu. Polovina kusu je pouze evidenční údaj, nikoli pokyn k dělení přípravku.
+
+## Ruční test
+
+1. Založte testovací bolest a přidejte testovací užití léku.
+2. Obnovte stránku a ověřte zachování záznamů.
+3. Ukončete bolest a upravte poznámku v historii.
+4. Ověřte odmítnutí konce před začátkem.
+5. Exportujte JSON a ověřte obsah pains a medications.
+6. Smažte testovací záznamy.
+
+Zdrojový kód před nahráním nebyl spuštěn v Node ani ověřen na iPhonu. Build, lint a funkční kontrolu proveďte lokálně.
