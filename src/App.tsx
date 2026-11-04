@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { readData, writeData } from './db'
 import type { Data, Pain, Medication } from './db'
+import DailyCheck from './DailyCheck'
 import './App.css'
 
 const drugs = ['Ibalgin RapidCaps', 'Panadol Extra Rapide', 'Panadol', 'Ataralgin', 'Jiný přípravek']
@@ -17,7 +18,7 @@ function timestamp(value: string) {
   return d.toISOString()
 }
 type Editor = { kind:'pain'; item?:Pain } | { kind:'med'; item?:Medication }
-export default function App() {
+export default function App({visible=true}:{visible?:boolean}) {
   const [data,setData] = useState<Data>({pains:[],medications:[]})
   const [ready,setReady] = useState(false)
   const [busy,setBusy] = useState(false)
@@ -53,7 +54,7 @@ export default function App() {
   }
   const active=data.pains.find(x=>!x.end)
   const events=[...data.pains.map(item=>({kind:'pain' as const,at:item.start,item})),...data.medications.map(item=>({kind:'med' as const,at:item.at,item}))].sort((a,b)=>b.at.localeCompare(a.at))
-  return <div className="app"><header><small>OSOBNÍ DENÍK · VERZE 0.1</small><h1>Pain Tracker<span>•</span></h1><p>Bolesti, léky a čas na jednom místě.</p></header>
+  return <div className="app"><header><small>OSOBNÍ DENÍK</small><h1>Pain Tracker<span>•</span></h1><p>Bolesti, léky a čas na jednom místě.</p></header>
     {error&&<p role="alert" className="alert">{error}</p>}<p className="status" role="status">{busy?'Ukládám…':notice}</p>
     {!ready?<section className="card">{error?'Databázi nelze otevřít. Zkus obnovit stránku.':'Načítám databázi…'}</section>:<>
     <main>{tab==='today'&&<>
@@ -61,12 +62,13 @@ export default function App() {
       {active?.note&&<p className="note">{active.note}</p>}<button className="primary" disabled={busy} onClick={()=>setEditor({kind:'pain',item:active})}>{active?'Upravit / ukončit bolest':'＋ Začala bolest'}</button>
       {active&&<button disabled={busy} onClick={()=>void savePain({...active,end:new Date().toISOString()}).catch(e=>setError(String(e)))}>Bolest skončila nyní</button>}</section>
       <section className="card"><h2>Záznam léku</h2><p>Nyní nebo zpětně. Bez doporučování dávkování.</p><button disabled={busy} onClick={()=>setEditor({kind:'med'})}>＋ Vzal jsem lék</button></section>
-      <div className="stats"><section className="card"><strong>{data.pains.length}</strong><p>epizod bolesti</p></section><section className="card"><strong>{data.medications.length}</strong><p>užití léku</p></section></div><p className="muted">Import jídel a analýzu přidáme v další etapě.</p>
+      {visible&&<DailyCheck pains={data.pains}/>}
+      <div className="stats"><section className="card"><strong>{data.pains.length}</strong><p>epizod bolesti</p></section><section className="card"><strong>{data.medications.length}</strong><p>užití léku</p></section></div><p className="muted">Jídelníček, souvislosti a statistiky najdeš v horní navigaci.</p>
     </>}
     {tab==='history'&&<><h2>Historie</h2>{!events.length&&<section className="card">Zatím žádné záznamy.</section>}{events.map(e=><article className="card" key={e.item.id}><small>{e.kind==='pain'?'BOLEST HLAVY':'UŽITÍ LÉKU'}</small><h3>{e.kind==='pain'?`Intenzita ${e.item.intensity}/10`:`${e.item.name} · ${e.item.count} ks`}</h3><p>{date(e.at)}</p>
       {e.kind==='pain'?<p>{e.item.end?`Konec: ${date(e.item.end)}`:'Stále probíhá'}</p>:<><p>{e.item.strength||'Síla neuvedena'}</p><p>{e.item.painId?'Přiřazeno k bolesti':'Samostatný záznam'}</p></>}
       {e.item.note&&<p className="note">{e.item.note}</p>}<div className="row"><button disabled={busy} onClick={()=>{if(e.kind==='pain')setEditor({kind:'pain',item:e.item});else setEditor({kind:'med',item:e.item})}}>Upravit</button><button className="danger" disabled={busy} onClick={()=>void remove(e.kind,e.item.id)}>Smazat</button></div></article>)}</>}
-    {tab==='settings'&&<><h2>Data a záloha</h2><section className="card"><h3>Lokální databáze</h3><p>Data zůstávají v tomto prohlížeči. Smazání dat webu je může odstranit. Používej aplikaci pouze v jediné kartě.</p><button onClick={backup}>Exportovat JSON zálohu</button><p className="muted">Záloha obsahuje citlivé údaje. Nedávej ji do GitHubu. Obnovení zálohy doplníme v další verzi.</p></section><section className="card"><h3>Časy jídel — plánované nastavení</h3><p>Snídaně 06:00–10:00<br/>Dopolední svačina 09:00–11:00<br/>Oběd 11:00–14:00<br/>Odpolední svačina 14:00–17:30<br/>Večeře 17:30–20:00<br/>Druhá večeře 19:30–23:00</p><p className="muted">Zatím přehled zadání, nikoli funkční evidence jídel.</p></section></>}
+    {tab==='settings'&&<><h2>Data a záloha</h2><section className="card"><h3>Lokální databáze</h3><p>Data zůstávají v tomto prohlížeči. Smazání dat webu je může odstranit. Používej aplikaci pouze v jediné kartě.</p><button onClick={backup}>Exportovat JSON zálohu bolestí a léků</button><p className="muted">Záloha obsahuje citlivé údaje. Nedávej ji do GitHubu. Tento export neobsahuje jídelníček ani kontroly dnů. Sjednocený export a obnovení doplníme v další verzi.</p></section><section className="card"><h3>Časová rozmezí jídel</h3><p>Snídaně 06:00–10:00<br/>Dopolední svačina 09:00–11:00<br/>Oběd 11:00–14:00<br/>Odpolední svačina 14:00–17:30<br/>Večeře 17:30–20:00<br/>Druhá večeře 19:30–23:00</p><p className="muted">Rozmezí používá jídelníček a analýza. Jejich změnu v nastavení doplníme později.</p></section></>}
     </main><nav aria-label="Hlavní navigace">{[['today','Dnes'],['history','Historie'],['settings','Nastavení']].map(([id,label])=><button key={id} aria-current={tab===id?'page':undefined} className={tab===id?'selected':''} onClick={()=>setTab(id)}>{label}</button>)}</nav></>}
     {editor&&<EntryForm key={editor.item?.id??editor.kind} editor={editor} data={data} busy={busy} close={()=>setEditor(null)} savePain={savePain} saveMed={m=>commit({...data,medications:[...data.medications.filter(x=>x.id!==m.id),m]})}/>}
   </div>
