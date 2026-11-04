@@ -1,4 +1,4 @@
-import { mealTimes, signature } from './food-parser.mjs'
+import { signature } from './food-parser.mjs'
 export function localDay(now=new Date()){return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`}
 export function previousDay(now=new Date()){const d=new Date(now);d.setDate(d.getDate()-1);return localDay(d)}
 export function dayBounds(day){
@@ -18,14 +18,13 @@ export function painsInDay(day,pains){
 }
 export function foodSnapshot(day,slots){
   const daySlots=slots.filter(s=>s.day===day)
-  return {available:Object.keys(mealTimes).every(c=>daySlots.some(s=>s.category===c)),signature:JSON.stringify(daySlots.map(s=>[s.category,signature(s)]).sort((a,b)=>a[0].localeCompare(b[0])))}
+  return {available:daySlots.length>0,signature:JSON.stringify(daySlots.map(s=>[s.category,signature(s)]).sort((a,b)=>a[0].localeCompare(b[0])))}
 }
-export function validateCheck(check,pains,slots,now=new Date()){
+export function validateCheck(check,pains,_slots,now=new Date()){
   dayBounds(check.day);const errors=[]
   if(check.day>=localDay(now))errors.push('Potvrdit lze pouze ukončené minulé dny, ne dnešek ani budoucnost.')
   if(!['none','pain','unknown'].includes(check.headache)||!['complete','incomplete','unknown'].includes(check.food))errors.push('Neplatný stav kontroly.')
   if(check.headache==='none'&&painsInDay(check.day,pains).length)errors.push('Do dne zasahuje záznam bolesti. Oprav epizodu, nebo zvol bolest během dne.')
-  if(check.food==='complete'&&!foodSnapshot(check.day,slots).available)errors.push('Pro potvrzení úplnosti nejprve importuj všech šest kategorií dne, včetně skutečně vynechaných jídel.')
   return errors
 }
 export function assessCheck(day,check,pains,slots,zone,now=new Date()){
@@ -38,7 +37,7 @@ export function assessCheck(day,check,pains,slots,zone,now=new Date()){
   if(check.food==='incomplete')food='incomplete'
   if(check.food==='complete'){
     const snapshot=foodSnapshot(day,slots)
-    food=review||!snapshot.available||snapshot.signature!==check.foodSignature?'review':'complete'
+    food=review||snapshot.signature!==check.foodSignature?'review':'complete'
   }
   return {headache,food,painCount:count}
 }

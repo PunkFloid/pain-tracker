@@ -19,13 +19,7 @@ export function windowReport(slots,onset,olderHours,newerHours,times=mealTimes){
     return status==='none'?[]:[{slot,...b,status}]
   }).sort((a,b)=>a.start-b.start)
   const expected=[];const cursor=new Date(low);cursor.setHours(0,0,0,0)
-  while(cursor.getTime()<high){
-    for(const category of Object.keys(times)){
-      const slot={day:dayKey(cursor),category};const b=bounds(slot,times)
-      if(b&&relation(b.start,b.end,low,high)!=='none')expected.push(slot.day+'|'+category)
-    }
-    cursor.setDate(cursor.getDate()+1)
-  }
-  const available=new Set(slots.map(s=>s.key))
-  return {low,high,rows,expected:expected.length,imported:expected.filter(k=>available.has(k)).length,missing:expected.filter(k=>!available.has(k))}
+  while(cursor.getTime()<high){expected.push(dayKey(cursor));cursor.setDate(cursor.getDate()+1)}
+  const available=new Set(slots.map(s=>s.day))
+  return {low,high,rows,expected:expected.length,imported:expected.filter(d=>available.has(d)).length,missing:expected.filter(d=>!available.has(d))}
 }
