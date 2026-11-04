@@ -1,11 +1,11 @@
 import { windowReport } from './time-analysis.mjs'
-const normalized=s=>s.normalize('NFC').replace(/\s+/g,' ').trim().toLocaleLowerCase('cs-CZ')
+import { trackedIdentity } from './naming-rules.mjs'
 function entries(slot,kind){return slot.items.flatMap(item=>kind==='food'?[item]:item.ingredients)}
 export function foodStatistics(slots,pains,kind,olderHours,newerHours,includePartial=false){
   const index=new Map()
   for(const slot of slots)for(const item of entries(slot,kind)){
-    const key=normalized(item.name);if(!key)continue
-    if(!index.has(key))index.set(key,{key,name:item.name,days:new Set(),hits:[]})
+    const {key,name}=trackedIdentity(item);if(!key)continue
+    if(!index.has(key))index.set(key,{key,name,days:new Set(),hits:[]})
     index.get(key).days.add(slot.day)
   }
   let eligible=0,partial=0,noData=0,incomplete=0
@@ -16,7 +16,7 @@ export function foodStatistics(slots,pains,kind,olderHours,newerHours,includePar
     eligible++;if(report.missing.length)partial++
     const seen=new Map()
     for(const row of report.rows)for(const item of entries(row.slot,kind)){
-      const key=normalized(item.name)
+      const {key}=trackedIdentity(item)
       if(!seen.has(key)||row.status==='inside')seen.set(key,row.status)
     }
     for(const [key,status] of seen){const entry=index.get(key);if(entry)entry.hits.push({painId:pain.id,start:pain.start,status})}

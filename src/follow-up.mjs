@@ -1,6 +1,6 @@
 import { mealTimes } from './food-parser.mjs'
 import { assessCheck, localDay } from './day-check-logic.mjs'
-const keyOf=s=>s.normalize('NFC').replace(/\s+/g,' ').trim().toLocaleLowerCase('cs-CZ')
+import { trackedIdentity } from './naming-rules.mjs'
 function dates(from,until){const result=[];const d=new Date(from);d.setHours(0,0,0,0);while(d.getTime()<until){result.push(localDay(d));d.setDate(d.getDate()+1)}return result}
 function overlaps(p,from,until,now){
   const start=Date.parse(p.start),end=p.end===null?now:Math.min(Date.parse(p.end),now)
@@ -23,8 +23,8 @@ export function followUp(slots,pains,checks,kind='food',zone=Intl.DateTimeFormat
     const from=new Date(`${slot.day}T${times[0]}:00`).getTime(),mealEnd=new Date(`${slot.day}T${times[1]}:00`).getTime()
     if(!Number.isFinite(from)||!Number.isFinite(mealEnd)||mealEnd<from)continue
     for(const parent of slot.items)for(const item of kind==='food'?[parent]:parent.ingredients){
-      const key=keyOf(item.name);if(!key)continue
-      if(!index.has(key))index.set(key,{key,name:item.name,occasions:new Map()})
+      const {key,name}=trackedIdentity(item);if(!key)continue
+      if(!index.has(key))index.set(key,{key,name,occasions:new Map()})
       const occasions=index.get(key).occasions
       if(!occasions.has(slot.key))occasions.set(slot.key,{day:slot.day,category:slot.category,from,mealEnd,until:mealEnd+48*3600000,amounts:[]})
       occasions.get(slot.key).amounts.push(item.amount)
