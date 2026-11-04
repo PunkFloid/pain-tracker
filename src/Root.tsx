@@ -2,7 +2,7 @@ import { useState } from 'react'
 import App from './App'
 import Food from './Food'
 import Analysis from './Analysis'
-import Statistics from './Statistics'
+import Statistics from './StatisticsPage'
 import './food.css'
 export default function Root(){
   const [tab,setTab]=useState('pain')
