@@ -16,7 +16,7 @@ function evaluate(group,pains,checks,slots,zone,now){
   })
   return {...group,status:missingDays.length?'unknown':'free',painBefore:false,painIds:[],missingDays}
 }
-export function followUp(slots,pains,checks,kind='food',zone=Intl.DateTimeFormat().resolvedOptions().timeZone,now=Date.now()){
+export function followUp(slots,pains,checks,kind='food',zone=Intl.DateTimeFormat().resolvedOptions().timeZone,now=Date.now(),merge=true){
   const index=new Map()
   for(const slot of slots){const times=mealTimes[slot.category];if(!times)continue
     const from=new Date(`${slot.day}T${times[0]}:00`).getTime(),mealEnd=new Date(`${slot.day}T${times[1]}:00`).getTime()
@@ -28,7 +28,7 @@ export function followUp(slots,pains,checks,kind='food',zone=Intl.DateTimeFormat
   }
   return [...index.values()].map(entry=>{const exposures=[...entry.occasions.values()].sort((a,b)=>a.from-b.from),groups=[]
     for(const exposure of exposures){const last=groups[groups.length-1];const sameEra=last&&(localDay(new Date(last.from))>=HEADACHE_START)===(exposure.day>=HEADACHE_START)
-      if(last&&sameEra&&exposure.from<last.until){last.until=Math.max(last.until,exposure.until);last.exposures.push(exposure)}else groups.push({from:exposure.from,until:exposure.until,exposures:[exposure]})
+      if(merge&&last&&sameEra&&exposure.from<last.until){last.until=Math.max(last.until,exposure.until);last.exposures.push(exposure)}else groups.push({from:exposure.from,until:exposure.until,exposures:[exposure]})
     }
     const evaluated=groups.map(g=>evaluate(g,pains,checks,slots,zone,now))
     return {key:entry.key,name:entry.name,days:new Set(exposures.map(e=>e.day)).size,occasions:exposures.length,groups:evaluated,free:evaluated.filter(g=>g.status==='free').length,pain:evaluated.filter(g=>g.status==='pain').length,running:evaluated.filter(g=>g.status==='running').length,unknown:evaluated.filter(g=>g.status==='unknown').length}
