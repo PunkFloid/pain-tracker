@@ -9,7 +9,8 @@ function readDeferred():string[]{try{const v=JSON.parse(localStorage.getItem(sto
 const labels:Record<FollowStatus,string>={free:'Bez bolesti',pain:'Bolest',running:'Běží',unknown:'Chybí údaje'}
 const fd=(d:string)=>d.split('-').reverse().join('.')
 const value=(r:Row,k:SortKey)=>k==='count'?r.occasions:k==='pain'?r.pain:k==='free'?r.free:r.running+r.unknown
-const heads:[SortKey,string][]=[['name','Jídlo'],['count','Snědeno'],['pain','Bolest'],['free','Bez bolesti'],['wait','Čeká']]
+const heads:[SortKey,string,string][]=[['name','Jídlo','Jídlo'],['count','🍴','Snědeno'],['pain','🤕','Bolest'],['free','✅','Bez bolesti'],['wait','⏳','Čeká']]
+const headStyle={minHeight:36,padding:'6px 8px',whiteSpace:'nowrap'} as const
 export default function FollowUp(){
   const [loaded,setLoaded]=useState<Awaited<ReturnType<typeof loadFollowUp>>|null>(null)
   const [error,setError]=useState('');const [kind,setKind]=useState<'food'|'ingredient'>('food');const [search,setSearch]=useState('');const [open,setOpen]=useState('');const [now,setNow]=useState(()=>Date.now())
@@ -29,7 +30,7 @@ export default function FollowUp(){
   return <main className="app food compact-view" aria-label="Statistiky jídel">{error&&<p className="alert" role="alert">{error}</p>}
     {!loaded?<p>{error?'Načtení selhalo. Obnov stránku.':'Načítám…'}</p>:<>
     <section className="card"><label>Zobrazit<select value={kind} onChange={e=>{setKind(e.target.value as 'food'|'ingredient');setOpen('')}}><option value="food">Jídla</option><option value="ingredient">Suroviny</option></select></label><input className="compact-input" type="search" aria-label="Hledat" placeholder="Hledat" value={search} onChange={e=>setSearch(e.target.value)}/></section>
-    <section className="card table-card"><table className="data-table"><thead><tr>{heads.map(([k,label])=><th key={k} scope="col"><button className={sort===k?'primary':''} aria-pressed={sort===k} onClick={()=>pick(k)}>{label}{sort===k?(desc?' ↓':' ↑'):''}</button></th>)}</tr></thead><tbody>
+    <section className="card table-card"><table className="data-table"><thead><tr>{heads.map(([k,icon,label])=><th key={k} scope="col"><button style={headStyle} className={sort===k?'primary':''} aria-pressed={sort===k} aria-label={label} title={label} onClick={()=>pick(k)}>{icon}{sort===k?(desc?'↓':'↑'):''}</button></th>)}</tr></thead><tbody>
     {!active.length&&<tr><td className="empty-cell" colSpan={5}>Žádné položky.</td></tr>}
     {active.map(line)}
     </tbody></table></section>
