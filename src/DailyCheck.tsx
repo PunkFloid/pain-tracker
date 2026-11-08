@@ -19,9 +19,8 @@ export default function DailyCheck({pains}:{pains:Pain[]}){
   return <section className="card day-check"><h2>Stav dne</h2><label>Datum<input type="date" max={localDay()} value={day} disabled={busy} onChange={e=>{if(e.target.value)setDay(e.target.value)}}/></label>
     {loading?<p>Načítám…</p>:!loaded?<button onClick={()=>setReload(n=>n+1)}>Načíst znovu</button>:<>
     <p className="day-check-status">{labels[status.headache]} · Jídelníček: {labels[status.food]}</p>
-    <label>Bolest hlavy<select value={headache} disabled={busy} onChange={e=>{setHeadache(e.target.value as HeadacheChoice);setNotice('')}}><option value="auto">Automaticky</option><option value="none" disabled={status.painCount>0}>Bez bolesti</option><option value="pain">Bolest během dne</option><option value="unknown">Bez záznamu / nevím</option></select></label>
-    <label>Jídelníček<select value={food} disabled={busy} onChange={e=>{setFood(e.target.value as FoodChoice);setNotice('')}}><option value="auto">Automaticky podle importu</option><option value="complete">Kompletní</option><option value="incomplete">Neúplný</option><option value="unknown">Bez záznamu / nevím</option></select></label>
-    {headache==='pain'&&!status.painCount&&<p className="alert">Doplň také epizodu bolesti.</p>}
+    <label>Bolest hlavy<select value={headache} disabled={busy} onChange={e=>{setHeadache(e.target.value as HeadacheChoice);setNotice('')}}><option value="auto">Automaticky</option><option value="none" disabled={status.painCount>0}>Bez bolesti</option><option value="pain">Bolest během dne</option><option value="unknown">Bez záznamu</option></select></label>
+    <label>Jídelníček<select value={food} disabled={busy} onChange={e=>{setFood(e.target.value as FoodChoice);setNotice('')}}><option value="auto">Automaticky</option><option value="complete">Kompletní</option><option value="incomplete">Neúplný</option><option value="unknown">Bez záznamu</option></select></label>
     <button className="primary" disabled={busy} onClick={()=>void submit()}>{busy?'Ukládám…':'Uložit výjimku'}</button></>}
     {error&&<p className="alert" role="alert">{error}</p>}{notice&&<p className="status" role="status">{notice}</p>}
   </section>
