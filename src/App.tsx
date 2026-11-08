@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import { readData, writeData } from './db'
 import type { Data, Pain, Medication } from './db'
 import DailyCheck from './DailyCheck'
+import EpisodeFoods from './EpisodeFoods'
 import './App.css'
 
 const drugs = ['Ibalgin RapidCaps', 'Panadol Extra Rapide', 'Panadol', 'Ataralgin', 'Jiný přípravek']
@@ -85,7 +86,7 @@ function History({ data, busy, events, edit, remove }: { data: Data; busy: boole
         {list.map(e => <div key={e.item.id}><button className="row-toggle" aria-expanded={open === e.item.id} onClick={() => setOpen(open === e.item.id ? '' : e.item.id)}>{line(e)}</button>
           {open === e.item.id && <div className="detail-content">
             {e.kind === 'pain' ? <p>{e.item.end ? `Konec: ${date(e.item.end)}` : 'Stále probíhá'}</p> : <p>{e.item.strength || 'Síla neuvedena'} · {e.item.painId ? 'Přiřazeno k bolesti' : 'Samostatný záznam'}</p>}
-            {e.item.note && <p className="note">{e.item.note}</p>}{actions(e)}</div>}</div>)}
+            {e.item.note && <p className="note">{e.item.note}</p>}{e.kind === 'pain' && <EpisodeFoods start={e.item.start} />}{actions(e)}</div>}</div>)}
       </details>
     })}
   </>

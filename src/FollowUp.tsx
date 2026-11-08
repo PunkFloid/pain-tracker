@@ -2,20 +2,35 @@ import { Fragment, useEffect, useMemo, useState } from 'react'
 import { followUp } from './follow-up.mjs'
 import type { FollowStatus } from './follow-up.mjs'
 import { loadFollowUp } from './follow-up-store'
-const fmt=(v:number)=>new Date(v).toLocaleString('cs-CZ',{day:'numeric',month:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit'})
-const labels:Record<FollowStatus,string>={free:'Bez bolesti',pain:'Bolest v období',running:'Probíhá',unknown:'Chybí údaje'}
+type Row=ReturnType<typeof followUp>[number]
+const storeKey='pain-tracker-deferred'
+function readDeferred():string[]{try{const v=JSON.parse(localStorage.getItem(storeKey)??'[]');return Array.isArray(v)?v.filter((x):x is string=>typeof x==='string'):[]}catch{return[]}}
+const labels:Record<FollowStatus,string>={free:'Bez bolesti',pain:'Bolest',running:'Běží',unknown:'Chybí údaje'}
+const count=(r:Row,s:FollowStatus)=>r.groups.filter(g=>g.status===s).reduce((a,g)=>a+g.exposures.length,0)
+const fd=(d:string)=>d.split('-').reverse().join('.')
 export default function FollowUp(){
   const [loaded,setLoaded]=useState<Awaited<ReturnType<typeof loadFollowUp>>|null>(null)
   const [error,setError]=useState('');const [kind,setKind]=useState<'food'|'ingredient'>('food');const [search,setSearch]=useState('');const [open,setOpen]=useState('');const [now,setNow]=useState(()=>Date.now())
+  const [sort,setSort]=useState<'count'|'pain'>('count');const [deferred,setDeferred]=useState<string[]>(readDeferred)
   useEffect(()=>{let alive=true;loadFollowUp().then(d=>{if(alive)setLoaded(d)}).catch(e=>{if(alive)setError(String(e))});const timer=setInterval(()=>setNow(Date.now()),60000);return()=>{alive=false;clearInterval(timer)}},[])
   const rows=useMemo(()=>loaded?followUp(loaded.slots,loaded.data.pains,loaded.checks,kind,Intl.DateTimeFormat().resolvedOptions().timeZone,now):[],[loaded,kind,now])
-  const query=search.normalize('NFC').trim().toLocaleLowerCase('cs-CZ');const shown=rows.filter(r=>r.key.includes(query))
-  return <main className="app food compact-view" aria-label="Sledování po jídle">{error&&<p className="alert" role="alert">{error}</p>}
+  function toggle(id:string){const next=deferred.includes(id)?deferred.filter(x=>x!==id):[...deferred,id];setDeferred(next);try{localStorage.setItem(storeKey,JSON.stringify(next))}catch{setError('Uložení seznamu selhalo.')}}
+  const query=search.normalize('NFC').trim().toLocaleLowerCase('cs-CZ')
+  const id=(r:Row)=>kind+'|'+r.key
+  const visible=rows.filter(r=>r.key.includes(query))
+  const active=visible.filter(r=>!deferred.includes(id(r))).sort((a,b)=>sort==='pain'?(count(b,'pain')-count(a,'pain'))||(b.occasions-a.occasions):b.occasions-a.occasions)
+  const parked=visible.filter(r=>deferred.includes(id(r)))
+  const waiting=active.reduce((a,r)=>a+count(r,'running')+count(r,'unknown'),0)
+  const detail=(r:Row)=>open===id(r)&&<tr className="detail-row"><td colSpan={4}><div className="detail-content"><ul>{[...r.groups].reverse().flatMap(g=>g.exposures.map(e=>({g,e}))).map(({g,e},i)=><li key={i}>{labels[g.status]} · {fd(e.day)} · {e.category} · {e.amounts.join(' + ')}</li>)}</ul><button onClick={()=>toggle(id(r))}>{deferred.includes(id(r))?'Vrátit':'Odložit'}</button></div></td></tr>
+  return <main className="app food compact-view" aria-label="Statistiky jídel">{error&&<p className="alert" role="alert">{error}</p>}
     {!loaded?<p>{error?'Načtení selhalo. Obnov stránku.':'Načítám…'}</p>:<>
-    <section className="card"><label>Zobrazit<select value={kind} onChange={e=>{setKind(e.target.value as 'food'|'ingredient');setOpen('')}}><option value="food">Jídla a potraviny</option><option value="ingredient">Suroviny z receptů</option></select></label><input className="compact-input" type="search" aria-label="Hledat potravinu" placeholder="Hledat" value={search} onChange={e=>setSearch(e.target.value)}/></section>
-    <section className="card table-card"><table className="data-table after-table"><caption>48hodinové sledování · počty období</caption><thead><tr><th scope="col">Položka</th><th scope="col">Bez bolesti</th><th scope="col">Bolest</th><th scope="col">Běží</th><th scope="col">Chybí údaje</th></tr></thead><tbody>
-    {!shown.length&&<tr><td className="empty-cell" colSpan={5}>Žádné položky.</td></tr>}
-    {shown.map(row=><Fragment key={row.key}><tr className={open===row.key?'is-open':''}><td><button className="row-toggle" aria-label={'Detail: '+row.name} aria-expanded={open===row.key} onClick={()=>setOpen(open===row.key?'':row.key)}><span className="item-name">{row.name}</span></button></td><td>{row.free}</td><td>{row.pain}</td><td>{row.running}</td><td>{row.unknown}</td></tr>{open===row.key&&<tr className="detail-row"><td colSpan={5}><div className="detail-content"><h3>{row.name}</h3><p>{row.occasions} konzumací · {row.days} dnů · {row.groups.length} období</p>{[...row.groups].reverse().map(group=><details key={group.from}><summary>{labels[group.status]} · {fmt(group.from)} → {fmt(group.until)}</summary>{group.status==='pain'&&<p>{group.painBefore?'Bolest už na začátku období.':'Bolest během období.'}</p>}{!!group.missingDays.length&&<p>Doplň kontrolu: {group.missingDays.map(d=>d.split('-').reverse().join('.')).join(', ')}</p>}<ul>{group.exposures.map((e,i)=><li key={i}>{e.day.split('-').reverse().join('.')} · {e.category} · {e.amounts.join(' + ')}</li>)}</ul></details>)}</div></td></tr>}</Fragment>)}
-    </tbody></table></section></>}
+    <section className="card"><label>Zobrazit<select value={kind} onChange={e=>{setKind(e.target.value as 'food'|'ingredient');setOpen('')}}><option value="food">Jídla</option><option value="ingredient">Suroviny</option></select></label><input className="compact-input" type="search" aria-label="Hledat" placeholder="Hledat" value={search} onChange={e=>setSearch(e.target.value)}/></section>
+    <section className="card table-card"><table className="data-table"><thead><tr><th scope="col"><button className={sort==='count'?'primary':''} onClick={()=>setSort('count')}>Jídlo ↓ snědeno</button></th><th scope="col">Snědeno</th><th scope="col"><button className={sort==='pain'?'primary':''} onClick={()=>setSort('pain')}>Bolest</button></th><th scope="col">Bez bolesti</th></tr></thead><tbody>
+    {!active.length&&<tr><td className="empty-cell" colSpan={4}>Žádné položky.</td></tr>}
+    {active.map(r=><Fragment key={r.key}><tr className={open===id(r)?'is-open':''}><td><button className="row-toggle" aria-expanded={open===id(r)} onClick={()=>setOpen(open===id(r)?'':id(r))}><span className="item-name">{r.name}</span></button></td><td>{r.occasions}</td><td>{count(r,'pain')}</td><td>{count(r,'free')}</td></tr>{detail(r)}</Fragment>)}
+    </tbody></table></section>
+    {waiting>0&&<p className="table-meta">+{waiting} čeká</p>}
+    {!!parked.length&&<section className="card table-card"><details><summary>Odložené ({parked.length})</summary><table className="data-table"><tbody>{parked.map(r=><Fragment key={r.key}><tr><td><button className="row-toggle" aria-expanded={open===id(r)} onClick={()=>setOpen(open===id(r)?'':id(r))}><span className="item-name">{r.name}</span></button></td><td>{r.occasions}</td><td>{count(r,'pain')}</td><td>{count(r,'free')}</td></tr>{detail(r)}</Fragment>)}</tbody></table></details></section>}
+    </>}
   </main>
 }
