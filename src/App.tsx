@@ -39,14 +39,14 @@ function period(data: Data, from: number, to: number) {
   return {
     episodes: pains.length,
     avg: pains.length ? pains.reduce((a, p) => a + p.intensity, 0) / pains.length : null,
-    meds: meds.reduce((a, m) => a + m.count, 0),
+    meds: meds.length,
     free: all.size ? [...all].filter(k => !painDays.has(k)).length : null,
     names: meds,
   }
 }
 function medSummary(meds: Medication[]) {
   const map = new Map<string, number>()
-  for (const m of meds) map.set(m.name, (map.get(m.name) ?? 0) + m.count)
+  for (const m of meds) map.set(m.name, (map.get(m.name) ?? 0) + 1)
   return [...map].sort((a, b) => b[1] - a[1]).map(([n, c]) => `${n} ${c}×`).join(' · ')
 }
 function line(e: Ev) {
@@ -58,8 +58,8 @@ function History({ data, busy, events, edit, remove }: { data: Data; busy: boole
   const now = Date.now()
   const cur = period(data, now - 30 * DAY, now + 1)
   const prev = period(data, now - 60 * DAY, now - 30 * DAY)
-  const last = events[0]
-  const lastMeds = last.kind === 'pain' ? data.medications.filter(m => m.painId === last.item.id) : []
+  const lastPain = events.find((e): e is Extract<Ev, { kind: 'pain' }> => e.kind === 'pain')
+  const lastMeds = lastPain ? data.medications.filter(m => m.painId === lastPain.item.id || (!m.painId && m.at >= lastPain.item.start && m.at <= (lastPain.item.end ?? new Date().toISOString()))).sort((a, b) => a.at.localeCompare(b.at)) : []
   const months = new Map<string, Ev[]>()
   for (const e of events) { const k = dayKey(e.at).slice(0, 7); months.set(k, [...(months.get(k) ?? []), e]) }
   const tile = (value: string, label: string, before: string) => <section className="card"><strong>{value}</strong><p>{label}</p><small>předtím: {before}</small></section>
@@ -73,16 +73,17 @@ function History({ data, busy, events, edit, remove }: { data: Data; busy: boole
       {tile(String(cur.meds), 'užití léků', String(prev.meds))}
     </div>
     {meds30 && <p className="muted">{meds30}</p>}
-    <section className="card"><small>POSLEDNÍ ZÁZNAM</small><h3>{line(last)}</h3>
-      {last.kind === 'pain' && <p>{last.item.end ? `Konec: ${date(last.item.end)}` : 'Stále probíhá'}{lastMeds.length ? ` · ${lastMeds.map(m => `${m.name} ${m.count} ks`).join(', ')}` : ''}</p>}
-      {actions(last)}</section>
+    {lastPain && <section className="card"><small>POSLEDNÍ BOLEST HLAVY</small><h3>{line(lastPain)}</h3>
+      <p>{lastPain.item.end ? `Konec: ${date(lastPain.item.end)}` : 'Stále probíhá'}</p>
+      {lastMeds.length ? <ul>{lastMeds.map(m => <li key={m.id}>{date(m.at)} · {m.name} {m.count} ks</li>)}</ul> : <p>Bez léků</p>}
+      {actions(lastPain)}</section>}
     <h3>Podle měsíců</h3>
     {[...months].map(([k, list]) => {
       const ps = list.filter((e): e is Extract<Ev, { kind: 'pain' }> => e.kind === 'pain')
       const ms = list.filter((e): e is Extract<Ev, { kind: 'med' }> => e.kind === 'med')
       const avg = ps.length ? dec(ps.reduce((a, e) => a + e.item.intensity, 0) / ps.length) : '–'
       const label = new Date(k + '-01T12:00:00').toLocaleDateString('cs-CZ', { month: 'long', year: 'numeric' })
-      return <details className="card" key={k}><summary>{label} · epizody {ps.length} · Ø {avg} · léky {ms.reduce((a, e) => a + e.item.count, 0)}</summary>
+      return <details className="card" key={k}><summary>{label} · epizody {ps.length} · Ø {avg} · léky {ms.length}</summary>
         {list.map(e => <div key={e.item.id}><button className="row-toggle" aria-expanded={open === e.item.id} onClick={() => setOpen(open === e.item.id ? '' : e.item.id)}>{line(e)}</button>
           {open === e.item.id && <div className="detail-content">
             {e.kind === 'pain' ? <p>{e.item.end ? `Konec: ${date(e.item.end)}` : 'Stále probíhá'}</p> : <p>{e.item.strength || 'Síla neuvedena'} · {e.item.painId ? 'Přiřazeno k bolesti' : 'Samostatný záznam'}</p>}
