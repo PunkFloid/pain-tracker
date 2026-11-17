@@ -1,0 +1,20 @@
+import { useEffect, useState } from 'react'
+import { loadFollowUp } from './follow-up-store'
+import { readIngredientRules } from './ingredient-rules.mjs'
+import { parseFoodReviews } from './food-review.mjs'
+import type { FoodReviews } from './food-review.mjs'
+import { buildFoodContext } from './food-context.mjs'
+import type { FoodContext as Context, UnresolvedFood } from './food-context.mjs'
+const evidence:Record<string,string>={manual:'Ručně zadané',source:'Uvedené ve zdroji',inferred:'Odvozené pravidlem'}
+const statuses:Record<string,string>={watch:'Sleduji',ok:'Běžně OK',suspect:'Podezřelé'}
+function oldName(id:string){try{const key=JSON.parse(id.slice(id.indexOf('|')+1));return String(key.at(-1))}catch{return id}}
+export default function FoodContext({revision}:{revision:number}) {
+  const [context,setContext]=useState<Context|null>(null),[reviews,setReviews]=useState<FoodReviews>({version:1,items:{}}),[error,setError]=useState(''),[query,setQuery]=useState(''),[selected,setSelected]=useState('')
+  useEffect(()=>{let alive=true;loadFollowUp().then(data=>{if(!alive)return;setContext(buildFoodContext(data.slots,readIngredientRules()));setReviews(parseFoodReviews(localStorage.getItem('pain-tracker-food-reviews')));setError('')}).catch(e=>{if(alive)setError(String(e))});return()=>{alive=false}},[revision])
+  if(error)return <section className="app"><p role="alert">Podklady jídel nelze načíst: {error}</p></section>
+  if(!context)return null
+  const chosen=context.ingredients.find(i=>i.id===selected)
+  const history=Object.entries(reviews.items).filter(([id])=>id.startsWith('food|')||id.startsWith('ingredient|["group"'))
+  function pending(items:UnresolvedFood[]){return <ul>{items.map(item=><li key={item.key}><details><summary>{item.name} · {item.occurrences.length} záznamů</summary><ul>{item.occurrences.map(o=><li key={o.key}>{o.day} · {o.category} · {o.amount}</li>)}</ul><a href="#food-composition">Upravit ve Složení jídel</a></details></li>)}</ul>}
+  return <section className="app food compact-view" style={{paddingBottom:0}}><div className="card"><details><summary>Dohledání původních jídel</summary><p>Všechny importované záznamy, nejen konzumace způsobilé pro statistiku bolestí. Počty se proto mohou od tabulky lišit.</p><label>Hledat surovinu<input className="compact-input" type="search" value={query} onChange={e=>setQuery(e.target.value)}/></label><label>Surovina<select value={selected} onChange={e=>setSelected(e.target.value)}><option value="">Vyber surovinu</option>{context.ingredients.filter(i=>i.id===selected||i.name.toLocaleLowerCase('cs-CZ').includes(query.trim().toLocaleLowerCase('cs-CZ'))).map(i=><option key={i.id} value={i.id}>{i.name}</option>)}</select></label>{chosen&&<><h3>{chosen.name}</h3><p>Výskyt v {new Set(chosen.occurrences.map(o=>o.slotKey)).size} jídelních slotech. Odvozené složení není potvrzením receptury.</p><ul>{[...chosen.occurrences].sort((a,b)=>b.day.localeCompare(a.day)).map(o=><li key={o.key}>{o.day} · {o.category} · {o.food} · {o.amount}<p className="muted">{o.evidence.map(e=>evidence[e]??e).join(' / ')} · původní suroviny: {o.originalNames.join(', ')}</p></li>)}</ul></>}</details></div><div className="card"><details><summary>Jídla k doplnění složení ({context.unresolved.length})</summary><p>Tato jídla zatím nemají rozpoznané suroviny. Nejsou sama o sobě podezřelou surovinou. U ostatních jídel také nemusí být dostupné složení úplné.</p>{context.unresolved.length?pending(context.unresolved):<p>Žádná nerozložená jídla.</p>}</details>{context.disabled.length>0&&<details><summary>Vypnutý rozklad ({context.disabled.length})</summary>{pending(context.disabled)}</details>}</div>{history.length>0&&<div className="card"><details><summary>Archiv hodnocení pokrmů a vlastních skupin ({history.length})</summary><p>Původní hodnocení se nepřenáší na jednotlivé přísady pokrmu. Záznamy zůstávají zachované.</p><ul>{history.map(([id,r])=><li key={id}>{oldName(id)} · {statuses[r.status??'']??'Bez hodnocení'}{r.note&&<p style={{whiteSpace:'pre-wrap'}}>{r.note}</p>}</li>)}</ul></details></div>}</section>
+}
