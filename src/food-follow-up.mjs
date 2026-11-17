@@ -2,7 +2,8 @@ import { followUp } from './follow-up.mjs'
 import { painMedicationStatus } from './pain-medication.mjs'
 import { mealTimes } from './food-parser.mjs'
 import { assessCheck, checkModes, HEADACHE_START, localDay } from './day-check-logic.mjs'
-import { ingredientSlots, readIngredientRules } from './ingredient-rules.mjs'
+import { readIngredientRules } from './ingredient-rules.mjs'
+import { ingredientSlots } from './ingredient-resolution.mjs'
 export function foodFollowUp(slots,pains,checks,medications,kind='food',zone=Intl.DateTimeFormat().resolvedOptions().timeZone,now=Date.now()){
   const byDay=new Map(checks.map(c=>[c.day,c])),known=new Map()
   function hasHeadacheData(day){
