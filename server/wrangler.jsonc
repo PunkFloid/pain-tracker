@@ -1,0 +1,20 @@
+{
+  "name": "pain-tracker-ai",
+  "main": "ai-worker.mjs",
+  "compatibility_date": "2026-11-17",
+  "workers_dev": true,
+  "vars": {
+    "AI_ENABLED": "false",
+    "ALLOWED_ORIGIN": "",
+    "OPENAI_MODEL": ""
+  },
+  "secrets": {
+    "required": ["OPENAI_API_KEY", "APP_AUTH_TOKEN"]
+  },
+  "ratelimits": [{
+    "name": "RATE_LIMITER",
+    "namespace_id": "1794916801",
+    "simple": {"limit": 10, "period": 60}
+  }],
+  "observability": {"enabled": false}
+}
