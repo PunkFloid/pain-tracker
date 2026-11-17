@@ -1,25 +1,34 @@
 import { automaticIngredients, generalIngredient, ingredientKey } from './ingredient-rules.mjs'
 import { canonicalIngredient } from './ingredient-identity.mjs'
+import { readAiIngredientCache, selectAiIngredientFallback } from './ai-ingredient-cache.mjs'
 
-function composition(item, rules) {
+function composition(item, rules, cache) {
   const rule = rules.items[ingredientKey(item.name)]
   if (rule?.mode === 'off') return { source: 'off', inputs: [] }
   if (rule?.mode === 'manual') return { source: 'manual', inputs: rule.names.map(name => ({ name, amount: '' })) }
   if (item.ingredients?.length) return { source: 'pdf', inputs: item.ingredients }
-  return { source: 'automatic', inputs: automaticIngredients(item.name).map(name => ({ name, amount: '' })) }
+  const automatic = automaticIngredients(item.name)
+  if (automatic.length) return { source: 'automatic', inputs: automatic.map(name => ({ name, amount: '' })) }
+  const proposal = selectAiIngredientFallback(item, rules, cache)
+  return proposal ? { source: 'ai', inputs: proposal.ingredients.map(i => ({ name:i.name, amount:'' })) } : { source: 'automatic', inputs: [] }
 }
 
-export function resolveIngredients(item, rules = { version: 1, items: {} }) {
-  const root = composition(item, rules), warnings = [], leaves = new Map()
+export function resolveIngredients(item, rules = { version: 1, items: {} }, aiCache) {
+  const warnings = [], leaves = new Map()
+  let cache = aiCache
+  if (!cache) {
+    try { cache = readAiIngredientCache() } catch { cache = {version:1,items:{}}; warnings.push('AI úložiště nelze načíst; používají se jen ostatní zdroje složení.') }
+  }
+  const root = composition(item, rules, cache)
   let visited = 0
   function visit(node, path, ancestors, inferred, depth) {
     if (++visited > 1000) { if (!warnings.includes('node-limit')) warnings.push('node-limit'); return }
     const key = ingredientKey(node.name)
     if (ancestors.has(key)) { warnings.push('cycle: ' + [...path, node.name].join(' → ')); return }
     if (depth > 12) { warnings.push('depth-limit: ' + node.name); return }
-    const current = depth === 0 ? root : composition(node, rules)
+    const current = depth === 0 ? root : composition(node, rules, cache)
     const chain = [...path, node.name], next = new Set([...ancestors, key])
-    const derived = inferred || current.source === 'automatic'
+    const derived = inferred || current.source === 'automatic' || current.source === 'ai'
     for (const input of current.inputs) {
       if (visited > 1000) break
       const childRule = rules.items[ingredientKey(input.name)]
