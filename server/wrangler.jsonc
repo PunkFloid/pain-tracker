@@ -8,9 +8,6 @@
     "GROQ_FREE_TIER_CONFIRMED": "false",
     "ALLOWED_ORIGIN": ""
   },
-  "secrets": {
-    "required": ["GROQ_API_KEY", "APP_AUTH_TOKEN"]
-  },
   "ratelimits": [{
     "name": "RATE_LIMITER",
     "namespace_id": "1794916801",
