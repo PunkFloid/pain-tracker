@@ -7,10 +7,10 @@ async function readBody(response){
   const reader=response.body.getReader(),decoder=new TextDecoder();let size=0,text=''
   try{while(true){const {done,value}=await reader.read();if(done)break;size+=value.byteLength;if(size>50000){await reader.cancel();throw new Error('Odpověď serveru je příliš velká.')}text+=decoder.decode(value,{stream:true})}return text+decoder.decode()}finally{reader.releaseLock()}
 }
-export async function requestAiIngredientProposal(item,token,{storage,fetcher=fetch,signal}={}){
+export async function requestAiIngredientProposal(item,token,{storage,fetcher=fetch,signal,forceRefresh=false}={}){
   const request=createAiIngredientRequest(item)
   const cached=cachedAiIngredientProposal(item,readAiIngredientCache(storage))
-  if(cached)return {proposal:cached,fromCache:true}
+  if(cached&&!forceRefresh)return {proposal:cached,fromCache:true}
   if(typeof token!=='string'||token.trim().length<32||token.trim().length>512||/[\r\n]/u.test(token))throw new Error('Zadej platný APP_AUTH_TOKEN, nikoli klíč Groq.')
   const body=JSON.stringify(request)
   if(new TextEncoder().encode(body).length>24000)throw new Error('Požadavek je příliš velký.')
