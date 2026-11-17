@@ -5,11 +5,11 @@
   "workers_dev": true,
   "vars": {
     "AI_ENABLED": "false",
-    "ALLOWED_ORIGIN": "",
-    "OPENAI_MODEL": ""
+    "GROQ_FREE_TIER_CONFIRMED": "false",
+    "ALLOWED_ORIGIN": ""
   },
   "secrets": {
-    "required": ["OPENAI_API_KEY", "APP_AUTH_TOKEN"]
+    "required": ["GROQ_API_KEY", "APP_AUTH_TOKEN"]
   },
   "ratelimits": [{
     "name": "RATE_LIMITER",
