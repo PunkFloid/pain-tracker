@@ -1,3 +1,4 @@
+import { previewIngredientReviewMigration } from './ingredient-review-migration.mjs'
 const KEY='pain-tracker-food-reviews'
 const STATUSES=['watch','ok','suspect']
 export function parseFoodReviews(text){
@@ -7,8 +8,14 @@ export function parseFoodReviews(text){
   for(const entry of Object.values(data.items))if(!entry||typeof entry!=='object'||(entry.status!==undefined&&!STATUSES.includes(entry.status))||typeof entry.note!=='string'||typeof entry.updatedAt!=='string'||(entry.statusChangedAt!==undefined&&typeof entry.statusChangedAt!=='string')||(entry.acceptedPainIds!==undefined&&(!Array.isArray(entry.acceptedPainIds)||!entry.acceptedPainIds.every(id=>typeof id==='string'))))throw new Error('Neplatný záznam skupiny jídla.')
   return data
 }
-export function parseDeferred(text){const data=text===null?[]:JSON.parse(text);if(!Array.isArray(data)||!data.every(x=>typeof x==='string'))throw new Error('Neplatný seznam odložených jídel.');return data}
-export function readFoodReviews(storage=localStorage){return parseFoodReviews(storage.getItem(KEY))}
+export function parseDeferred(text){
+  const data=text===null?[]:JSON.parse(text)
+  if(!Array.isArray(data)||!data.every(x=>typeof x==='string'))throw new Error('Neplatný seznam odložených jídel.')
+  const items=Object.fromEntries(data.map(id=>[id,{note:'',updatedAt:''}]))
+  const mapped=previewIngredientReviewMigration({version:1,items}).aliases
+  return [...new Set([...data,...Object.values(mapped)])]
+}
+export function readFoodReviews(storage=localStorage){return previewIngredientReviewMigration(parseFoodReviews(storage.getItem(KEY))).reviews}
 export function writeFoodReview(id,patch,storage=localStorage){
   const data=readFoodReviews(storage),old=data.items[id]??{note:''}
   const entry={...old,...patch,updatedAt:new Date().toISOString()}

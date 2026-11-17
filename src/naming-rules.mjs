@@ -1,5 +1,6 @@
 export const normalizeName=s=>s.normalize('NFC').replace(/\s+/g,' ').trim().toLocaleLowerCase('cs-CZ')
 export function trackedIdentity(item){
+  if(typeof item.ingredientId==='string'&&item.ingredientId.trim())return {key:JSON.stringify(['ingredient',1,item.ingredientId]),name:item.name}
   const t=item.tracking
   if(t?.version===1&&typeof t.id==='string'&&t.id.trim()&&typeof t.label==='string'&&t.label.trim())return {key:JSON.stringify(['group',1,t.id]),name:t.label+' · skupina'}
   const raw=normalizeName(item.name)
