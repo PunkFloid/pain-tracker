@@ -1,12 +1,14 @@
 import { mealTimes } from './food-parser.mjs'
 import { assessCheck, checkModes, HEADACHE_START, localDay } from './day-check-logic.mjs'
 import { trackedIdentity } from './naming-rules.mjs'
+import { painMedicationStatus } from './pain-medication.mjs'
 function dates(from,until){const result=[];const d=new Date(from);d.setHours(0,0,0,0);while(d.getTime()<until){result.push(localDay(d));d.setDate(d.getDate()+1)}return result}
 function overlaps(p,from,until,now){const start=Date.parse(p.start),end=p.end===null?now:Math.min(Date.parse(p.end),now);if(!Number.isFinite(start)||!Number.isFinite(end)||start>now||end<start)return false;return start===end?start>=from&&start<until:start<until&&end>from}
-function evaluate(group,pains,checks,slots,zone,now){
-  const relevant=pains.filter(p=>overlaps(p,group.from,group.until,now)),painBefore=relevant.some(p=>Date.parse(p.start)<group.from)
+function evaluate(group,pains,checks,slots,zone,now,states){
+  const overlapping=pains.filter(p=>overlaps(p,group.from,group.until,now))
+  const relevant=overlapping.filter(p=>!states||states.get(p.id)==='treated'),painBefore=relevant.some(p=>Date.parse(p.start)<group.from)
   if(relevant.length)return {...group,status:'pain',painBefore,painIds:relevant.map(p=>p.id),missingDays:[]}
-  if(now<group.until)return {...group,status:'running',painBefore:false,painIds:[],missingDays:[]}
+  if(now<group.until||overlapping.some(p=>states?.get(p.id)==='pending'))return {...group,status:'running',painBefore:false,painIds:[],missingDays:[]}
   const byDay=new Map(checks.map(c=>[c.day,c]))
   const missingDays=dates(group.from,group.until).filter(day=>{
     const check=byDay.get(day)??null,mode=checkModes(check).headache
@@ -16,7 +18,8 @@ function evaluate(group,pains,checks,slots,zone,now){
   })
   return {...group,status:missingDays.length?'unknown':'free',painBefore:false,painIds:[],missingDays}
 }
-export function followUp(slots,pains,checks,kind='food',zone=Intl.DateTimeFormat().resolvedOptions().timeZone,now=Date.now(),merge=true){
+export function followUp(slots,pains,checks,kind='food',zone=Intl.DateTimeFormat().resolvedOptions().timeZone,now=Date.now(),merge=true,medications){
+  const states=medications===undefined?null:new Map(pains.map(p=>[p.id,painMedicationStatus(p,medications,now)]))
   const index=new Map()
   for(const slot of slots){const times=mealTimes[slot.category];if(!times)continue
     const from=new Date(`${slot.day}T${times[0]}:00`).getTime(),mealEnd=new Date(`${slot.day}T${times[1]}:00`).getTime()
@@ -30,7 +33,7 @@ export function followUp(slots,pains,checks,kind='food',zone=Intl.DateTimeFormat
     for(const exposure of exposures){const last=groups[groups.length-1];const sameEra=last&&(localDay(new Date(last.from))>=HEADACHE_START)===(exposure.day>=HEADACHE_START)
       if(merge&&last&&sameEra&&exposure.from<last.until){last.until=Math.max(last.until,exposure.until);last.exposures.push(exposure)}else groups.push({from:exposure.from,until:exposure.until,exposures:[exposure]})
     }
-    const evaluated=groups.map(g=>evaluate(g,pains,checks,slots,zone,now))
+    const evaluated=groups.map(g=>evaluate(g,pains,checks,slots,zone,now,states))
     return {key:entry.key,name:entry.name,days:new Set(exposures.map(e=>e.day)).size,occasions:exposures.length,groups:evaluated,free:evaluated.filter(g=>g.status==='free').length,pain:evaluated.filter(g=>g.status==='pain').length,running:evaluated.filter(g=>g.status==='running').length,unknown:evaluated.filter(g=>g.status==='unknown').length}
   }).sort((a,b)=>b.occasions-a.occasions||a.name.localeCompare(b.name,'cs'))
 }

@@ -11,3 +11,4 @@ function readAllChecks():Promise<DayCheckRecord[]>{return new Promise((resolve,r
   }
 })}
 export async function loadFollowUp(){const [data,slots,checks]=await Promise.all([readData(),readFoodForChecks(),readAllChecks()]);return {data,slots,checks}}
+export { foodFollowUp } from './food-follow-up.mjs'
