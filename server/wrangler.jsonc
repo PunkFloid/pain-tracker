@@ -6,7 +6,7 @@
   "vars": {
     "AI_ENABLED": "false",
     "GROQ_FREE_TIER_CONFIRMED": "false",
-    "ALLOWED_ORIGIN": ""
+    "ALLOWED_ORIGIN": "https://punkfloid.github.io"
   },
   "ratelimits": [{
     "name": "RATE_LIMITER",
