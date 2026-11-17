@@ -9,7 +9,13 @@ function targetFor(id) {
   let key
   try { key = JSON.parse(id.slice('ingredient|'.length)) } catch { return null }
   if (!Array.isArray(key)) return null
-  if (key.length === 3 && key[0] === 'ingredient' && key[1] === 1 && typeof key[2] === 'string' && key[2]) return id
+  if (key.length === 3 && key[0] === 'ingredient' && key[1] === 1 && typeof key[2] === 'string' && key[2]) {
+    if (key[2].startsWith('ingredient:raw:')) {
+      const ingredient = canonicalIngredient(key[2].slice('ingredient:raw:'.length))
+      return ingredient ? canonicalReviewId(ingredient.id) : id
+    }
+    return id
+  }
   // Custom tracking groups cannot safely be interpreted as single ingredients.
   if (key.length !== 2 || key[0] !== 'raw' || typeof key[1] !== 'string') return null
   const ingredient = canonicalIngredient(key[1])
