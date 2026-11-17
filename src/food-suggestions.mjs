@@ -1,6 +1,6 @@
 import { foodFollowUp } from './food-follow-up.mjs'
 const KEY='pain-tracker-food-suggestion-decisions'
-export const FOOD_RULES=Object.freeze({version:1,minConsumptions:10,minSpanDays:14,minFreeFraction:0.9,minEpisodes:3,baseline:'observed-meal-windows-matched-by-category'})
+export const FOOD_RULES=Object.freeze({version:2,minConsumptions:10,minSpanDays:14,minFreeFraction:0.9,suspectPainFraction:0.5,baseline:'observed-meal-windows-matched-by-category'})
 function completed(groups,now){return groups.filter(g=>g.until<=now&&!g.painBefore&&(g.status==='free'||g.status==='pain'))}
 export function foodSuggestion(row,baseline,review,pains,now=Date.now()){
   const status=review?.status??'watch'
@@ -15,12 +15,12 @@ export function foodSuggestion(row,baseline,review,pains,now=Date.now()){
   const comparable=n>0&&exposures.every(x=>cats.has(x.e.category))
   const baseRate=comparable?exposures.reduce((sum,x)=>{const b=cats.get(x.e.category);return sum+b.pain/b.total},0)/n:null
   const painRate=n?(n-free)/n:0
-  const signal=ids.length>=FOOD_RULES.minEpisodes&&baseRate!==null&&painRate>baseRate+1e-12
+  const signal=n>0&&(n-free)>n*FOOD_RULES.suspectPainFraction
   let type=null
   if(status==='ok'&&signal){const newIds=review?.acceptedPainIds?ids.filter(id=>!review.acceptedPainIds.includes(id)):ids.filter(id=>{const p=pains.find(p=>p.id===id);return p&&Date.parse(p.start)>Date.parse(review?.statusChangedAt??review?.updatedAt??'')});if(newIds.length)type='recheck'}
   if(status==='watch'){if(signal)type='suspect';else if(n>=FOOD_RULES.minConsumptions&&span>=FOOD_RULES.minSpanDays&&free/n>=FOOD_RULES.minFreeFraction)type='ok'}
   if(!type)return null
-  const evidence=type==='ok'?done.map(g=>[g.from,g.until,g.status,[...g.painIds].sort()]).sort((a,b)=>a[0]-b[0]):ids
+  const evidence=done.map(g=>[g.from,g.until,g.status,[...g.painIds].sort()]).sort((a,b)=>a[0]-b[0])
   const fingerprint=JSON.stringify([FOOD_RULES.version,type,review?.statusChangedAt??'',evidence])
   return {type,target:type==='recheck'?'watch':type,source:status,name:row.name,key:row.key,completed:n,free,spanDays:span,episodeIds:ids,painRate,baselineRate:baseRate,fingerprint}
 }
