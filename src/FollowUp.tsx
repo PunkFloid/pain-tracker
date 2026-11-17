@@ -1,8 +1,7 @@
 import { Fragment, useEffect, useMemo, useState } from 'react'
-import { followUp } from './follow-up.mjs'
-import type { FollowStatus } from './follow-up.mjs'
-import { loadFollowUp } from './follow-up-store'
-type Row=ReturnType<typeof followUp>[number]
+import type { FollowStatus, FollowRow } from './follow-up.mjs'
+import { loadFollowUp, foodFollowUp } from './follow-up-store'
+type Row=FollowRow
 type SortKey='name'|'count'|'pain'|'free'|'wait'
 const storeKey='pain-tracker-deferred'
 const LIMIT=10
@@ -17,7 +16,7 @@ export default function FollowUp(){
   const [error,setError]=useState('');const [kind,setKind]=useState<'food'|'ingredient'>('food');const [search,setSearch]=useState('');const [open,setOpen]=useState('');const [now,setNow]=useState(()=>Date.now())
   const [sort,setSort]=useState<SortKey>('count');const [desc,setDesc]=useState(true);const [deferred,setDeferred]=useState<string[]>(readDeferred);const [all,setAll]=useState(false)
   useEffect(()=>{let alive=true;loadFollowUp().then(d=>{if(alive)setLoaded(d)}).catch(e=>{if(alive)setError(String(e))});const timer=setInterval(()=>setNow(Date.now()),60000);return()=>{alive=false;clearInterval(timer)}},[])
-  const rows=useMemo(()=>loaded?followUp(loaded.slots,loaded.data.pains,loaded.checks,kind,Intl.DateTimeFormat().resolvedOptions().timeZone,now,false):[],[loaded,kind,now])
+  const rows=useMemo(()=>loaded?foodFollowUp(loaded.slots,loaded.data.pains,loaded.checks,loaded.data.medications,kind,Intl.DateTimeFormat().resolvedOptions().timeZone,now):[],[loaded,kind,now])
   function toggle(id:string){const next=deferred.includes(id)?deferred.filter(x=>x!==id):[...deferred,id];setDeferred(next);try{localStorage.setItem(storeKey,JSON.stringify(next))}catch{setError('Uložení seznamu selhalo.')}}
   function pick(k:SortKey){if(k===sort)setDesc(!desc);else{setSort(k);setDesc(k!=='name')}}
   const query=search.normalize('NFC').trim().toLocaleLowerCase('cs-CZ')
