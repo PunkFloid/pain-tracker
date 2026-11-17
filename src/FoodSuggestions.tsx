@@ -1,0 +1,18 @@
+import { useEffect, useMemo, useState } from 'react'
+import { loadFollowUp } from './follow-up-store'
+import { parseDeferred, readFoodReviews, writeFoodReview } from './food-review.mjs'
+import type { FoodReviews } from './food-review.mjs'
+import { foodSuggestions, readSuggestionDecisions, dismissFoodSuggestion } from './food-suggestions.mjs'
+import type { NamedProposal, SuggestionDecisions } from './food-suggestions.mjs'
+export default function FoodSuggestions({onApplied}:{onApplied:()=>void}){
+  const [data,setData]=useState<Awaited<ReturnType<typeof loadFollowUp>>|null>(null),[reviews,setReviews]=useState<FoodReviews>({version:1,items:{}}),[decisions,setDecisions]=useState<SuggestionDecisions>({version:1,items:{}}),[legacy,setLegacy]=useState<string[]>([]),[error,setError]=useState(''),[now,setNow]=useState(()=>Date.now())
+  useEffect(()=>{let alive=true;const refresh=()=>{try{if(alive){setReviews(readFoodReviews());setDecisions(readSuggestionDecisions());setLegacy(parseDeferred(localStorage.getItem('pain-tracker-deferred')))}}catch(e){if(alive)setError(String(e))}};refresh();loadFollowUp().then(d=>{if(alive)setData(d)}).catch(e=>{if(alive)setError(String(e))});window.addEventListener('food-reviews-changed',refresh);const timer=setInterval(()=>setNow(Date.now()),60000);return()=>{alive=false;window.removeEventListener('food-reviews-changed',refresh);clearInterval(timer)}},[])
+  const proposals=useMemo(()=>{if(!data||error)return [];const zone=Intl.DateTimeFormat().resolvedOptions().timeZone;return (['food','ingredient'] as const).flatMap(kind=>foodSuggestions(data,kind,reviews,legacy,zone,now)).filter(s=>decisions.items[s.id+'|'+s.type]!==s.fingerprint).sort((a,b)=>(a.type==='recheck'?0:a.type==='suspect'?1:2)-(b.type==='recheck'?0:b.type==='suspect'?1:2)||a.name.localeCompare(b.name,'cs'))},[data,reviews,legacy,now,decisions,error])
+  function apply(s:NamedProposal){try{const latest=readFoodReviews();if((latest.items[s.id]?.status??'watch')!==s.source){setReviews(latest);return}writeFoodReview(s.id,{status:s.target,acceptedPainIds:s.episodeIds});setError('');onApplied()}catch(e){setError(e instanceof Error?e.message:String(e))}}
+  function dismiss(s:NamedProposal){try{setDecisions(dismissFoodSuggestion(s));setError('')}catch(e){setError(e instanceof Error?e.message:String(e))}}
+  const percent=(v:number)=>`${Math.round(v*100)} %`
+  const card=(s:NamedProposal)=><article key={s.id} style={{borderTop:'1px solid #304152',padding:'12px 0',overflowWrap:'anywhere'}}><h3>{s.name}{s.kind==='ingredient'?' · surovina':''}</h3><p>{s.type==='ok'?`${s.free}/${s.completed} bez bolesti · ${s.spanDays} dní`:`${s.episodeIds.length} epizod · po jídle ${percent(s.painRate)} · srovnávací okna ${percent(s.baselineRate??0)}`}</p><div className="row"><button onClick={()=>apply(s)}>{s.type==='ok'?'Přesunout do Běžně OK':s.type==='suspect'?'Přesunout do Podezřelé':'Znovu prověřit — Sleduji'}</button><button onClick={()=>dismiss(s)}>Teď ne</button></div></article>
+  if(error)return <div className="app" style={{paddingBottom:0}}><p role="alert" className="alert">Návrhy nelze načíst: {error}</p></div>
+  if(!proposals.length)return null
+  return <section className="app" style={{paddingTop:8,paddingBottom:0}} aria-label="Návrhy Food Trackeru"><div className="card"><h2>Návrhy ({proposals.length})</h2>{proposals.slice(0,3).map(card)}{proposals.length>3&&<details><summary>Další návrhy ({proposals.length-3})</summary>{proposals.slice(3).map(card)}</details>}</div></section>
+}
