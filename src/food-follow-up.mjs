@@ -4,6 +4,7 @@ import { mealTimes } from './food-parser.mjs'
 import { assessCheck, checkModes, HEADACHE_START, localDay } from './day-check-logic.mjs'
 import { readIngredientRules } from './ingredient-rules.mjs'
 import { ingredientSlots } from './ingredient-resolution.mjs'
+import { filterIngredientEvidence, readIncludeInferred } from './ingredient-evidence.mjs'
 export function foodFollowUp(slots,pains,checks,medications,kind='food',zone=Intl.DateTimeFormat().resolvedOptions().timeZone,now=Date.now()){
   const byDay=new Map(checks.map(c=>[c.day,c])),known=new Map()
   function hasHeadacheData(day){
@@ -22,7 +23,7 @@ export function foodFollowUp(slots,pains,checks,medications,kind='food',zone=Int
     while(day.getTime()<until){if(!hasHeadacheData(localDay(day)))return false;day.setDate(day.getDate()+1)}
     return true
   })
-  const analysis=kind==='ingredient'?ingredientSlots(eligible,readIngredientRules()):eligible
+  const analysis=kind==='ingredient'?filterIngredientEvidence(ingredientSlots(eligible,readIngredientRules()),readIncludeInferred()):eligible
   return followUp(analysis,pains,checks,kind,zone,now,false,medications)
 }
 export function foodPainState(pain,medications,now){return painMedicationStatus(pain,medications,now)}
