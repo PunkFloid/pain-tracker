@@ -17,8 +17,17 @@ export function buildFoodContext(slots, rules) {
       const entry = ingredients.get(ingredient.ingredientId)
       if (!entry.occurrences.has(occurrence.key)) entry.occurrences.set(occurrence.key, { ...occurrence, evidence: new Set(), originalNames: new Set() })
       const source = entry.occurrences.get(occurrence.key)
-      source.evidence.add(ingredient.evidence)
-      source.originalNames.add(ingredient.originName)
+      const paths = ingredient.provenancePaths ?? []
+      if (paths.length) {
+        for (const provenance of paths) {
+          source.evidence.add(provenance.evidence)
+          const originalName = provenance.path.at(-1)
+          if (originalName) source.originalNames.add(originalName)
+        }
+      } else {
+        source.evidence.add(ingredient.evidence)
+        source.originalNames.add(ingredient.originName)
+      }
     }
   }
   return {
